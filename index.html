@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ডিডি শফিককে ধরো</title>
+    <title>Diddy শফিকুরকে ধরো</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@700&display=swap');
@@ -20,9 +20,9 @@
 
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+            background: rgba(0,0,0,0.92); display: none; flex-direction: column;
             justify-content: center; align-items: center; z-index: 100; color: white;
-            text-align: center; backdrop-filter: blur(10px);
+            text-align: center; backdrop-filter: blur(12px);
         }
 
         .punch-fx {
@@ -37,6 +37,14 @@
 
         .shimmer-text {
             background: linear-gradient(90deg, #ff0000, #ffff00, #ff0000);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 1.5s linear infinite;
+        }
+
+        .congrats-text {
+            background: linear-gradient(90deg, #00ff00, #ffffff, #00ff00);
             background-size: 200% auto;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -61,11 +69,12 @@
         
         <div id="overlay">
             <div id="beat-box" class="mb-6 h-32 flex items-center justify-center text-8xl"></div>
-            <h2 class="text-5xl font-black shimmer-text mb-6">নারীদের হাতে উধুম কেলানি খাচ্ছে Diddy Shafiqur! 🥊</h2>
+            <h2 id="result-status" class="text-6xl font-black mb-6">নারীদের হাতে উধুম কেলানি খাচ্ছেন শফিকুর! 🥊</h2>
             <div class="bg-white text-black p-8 rounded-3xl max-w-lg mb-8 shadow-[0_0_30px_rgba(255,0,0,0.5)] border-l-8 border-red-600">
                 <p class="text-3xl font-bold mb-3">কর্মজীবী নারীরা প্রস্টিটিউট নয়।</p>
                 <p class="text-2xl italic font-semibold text-red-600">আইডি হ্যাকের নাটক নয়।</p>
             </div>
+            <p class="text-xl mb-2">আপনার স্কোর: <span id="final-score">0</span></p>
             <button class="btn-restart" onclick="resetGame()">পালানোর শেষ চেষ্টা</button>
         </div>
     </div>
@@ -74,8 +83,9 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreEl = document.getElementById('score');
+        const finalScoreEl = document.getElementById('final-score');
         const overlay = document.getElementById('overlay');
-        const beatBox = document.getElementById('beat-box');
+        const resultStatus = document.getElementById('result-status');
 
         let gameActive = false;
         let isBeating = false;
@@ -116,7 +126,7 @@
 
             ctx.translate(x + 30, y + 65);
             
-            // Legs
+            
             ctx.lineWidth = 12;
             ctx.lineCap = 'round';
             ctx.strokeStyle = '#1a1a1a';
@@ -156,7 +166,7 @@
                 
                 ctx.fillStyle = '#fce2c4';
                 ctx.beginPath(); ctx.arc(0, -52 - bounce, 18, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#000'; // Hair
+                ctx.fillStyle = '#000'; 
                 ctx.beginPath(); ctx.arc(0, -58 - bounce, 21, Math.PI, 0); ctx.fill();
             }
 
@@ -185,7 +195,7 @@
             frame++;
             
             
-            speed += 0.0015;
+            speed += 0.002;
 
             
             player.y += player.dy;
@@ -199,14 +209,14 @@
             }
 
             
-            if (frame % Math.max(40, Math.floor(80 - speed)) === 0) {
+            if (frame % Math.max(35, Math.floor(75 - speed)) === 0) {
                 obstacles.push({ x: canvas.width, y: canvas.height * 0.75 - 50, w: 50, h: 50 });
             }
 
             obstacles.forEach((ob, i) => {
                 ob.x -= speed;
                 
-                if (player.x < ob.x + ob.w - 10 && player.x + player.w - 10 > ob.x && player.y + player.h > ob.y) {
+                if (player.x < ob.x + ob.w - 15 && player.x + player.w - 15 > ob.x && player.y + player.h > ob.y) {
                     triggerKelani();
                 }
                 if (ob.x < -100) {
@@ -218,7 +228,7 @@
 
             
             bgTextX -= (speed * 0.4);
-            if (bgTextX < -2000) bgTextX = canvas.width;
+            if (bgTextX < -2500) bgTextX = canvas.width;
 
             render();
             requestAnimationFrame(update);
@@ -236,10 +246,10 @@
 
             
             ctx.save();
-            ctx.globalAlpha = 0.15;
+            ctx.globalAlpha = 0.12;
             ctx.fillStyle = '#fff';
             ctx.font = '900 150px "Hind Siliguri"';
-            ctx.fillText('Diddy শফিকুর পালাচ্ছে... Diddy শফিকুর পালাচ্ছে...', bgTextX, canvas.height * 0.45);
+            ctx.fillText('Diddy Shafiqur পালাচ্ছে...Diddy Shafiqur পালাচ্ছে...', bgTextX, canvas.height * 0.45);
             ctx.restore();
 
             
@@ -272,12 +282,21 @@
             gameActive = false;
             isBeating = true;
             
+            
+            finalScoreEl.innerText = score;
+            if (score > 20) {
+                resultStatus.innerText = "স্কোর এতো বেশি কেন? জাশি নাকি? 😡";
+                resultStatus.className = "text-6xl font-black mb-6 congrats-text";
+            } else {
+                resultStatus.innerText = "নারীদের হাতে উধুম কেলানি খাচ্ছেন শফিকুর! 🥊";
+                resultStatus.className = "text-6xl font-black mb-6 shimmer-text";
+            }
+
             let hits = 0;
             const beatInterval = setInterval(() => {
                 const rx = player.x + (Math.random() * 120 - 60);
                 const ry = player.y + (Math.random() * 120 - 60);
                 createPunchFX(rx, ry);
-                
                 
                 render();
                 for(let i=0; i<10; i++) {
@@ -306,17 +325,30 @@
             update();
         }
 
-        // Init
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 30px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('শুরু করতে ট্যাপ করুন', canvas.width/2, canvas.height/2);
         
-        canvas.addEventListener('click', () => {
-            if(!gameActive && !isBeating) resetGame();
-        }, { once: true });
+        function initGame() {
+            resize();
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            ctx.fillRect(0,0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 35px "Hind Siliguri"';
+            ctx.textAlign = 'center';
+            ctx.fillText('বাঁচতে হলে ট্যাপ করুন', canvas.width/2, canvas.height/2);
+            
+            const startHandler = () => {
+                if(!gameActive && !isBeating) {
+                    resetGame();
+                    window.removeEventListener('click', startHandler);
+                    window.removeEventListener('touchstart', startHandler);
+                }
+            };
+
+            window.addEventListener('click', startHandler);
+            window.addEventListener('touchstart', startHandler);
+        }
+
+        window.onload = initGame;
         
     </script>
 </body>
-
 </html>
