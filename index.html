@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ডিডি শফিককে ধরো</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@700&display=swap');
+        
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Hind Siliguri', sans-serif; touch-action: manipulation; }
+        #game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+        canvas { display: block; }
+        
+        #ui {
+            position: absolute; top: 20px; left: 20px; color: #fff;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.9); font-size: 2rem;
+            font-weight: 900; pointer-events: none; z-index: 50;
+        }
+
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100; color: white;
+            text-align: center; backdrop-filter: blur(10px);
+        }
+
+        .punch-fx {
+            position: absolute; font-size: 60px; pointer-events: none;
+            animation: impact 0.4s ease-out forwards; z-index: 80;
+        }
+
+        @keyframes impact {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2) translateY(-50px); opacity: 0; }
+        }
+
+        .shimmer-text {
+            background: linear-gradient(90deg, #ff0000, #ffff00, #ff0000);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 1.5s linear infinite;
+        }
+
+        @keyframes shine { to { background-position: 200% center; } }
+        
+        .btn-restart {
+            background: #ff0000; color: #fff; padding: 15px 45px; border-radius: 50px;
+            font-size: 22px; font-weight: bold; cursor: pointer; border: 3px solid #fff;
+            transition: 0.3s; margin-top: 20px;
+        }
+        .btn-restart:hover { transform: scale(1.05); background: #cc0000; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui">স্কোর: <span id="score">0</span></div>
+        
+        <div id="overlay">
+            <div id="beat-box" class="mb-6 h-32 flex items-center justify-center text-8xl"></div>
+            <h2 class="text-5xl font-black shimmer-text mb-6">নারীদের হাতে উধুম কেলানি খাচ্ছে Diddy Shafiqur! 🥊</h2>
+            <div class="bg-white text-black p-8 rounded-3xl max-w-lg mb-8 shadow-[0_0_30px_rgba(255,0,0,0.5)] border-l-8 border-red-600">
+                <p class="text-3xl font-bold mb-3">কর্মজীবি নারীরা প্রস্টিটিউট নয়।</p>
+                <p class="text-2xl italic font-semibold text-red-600">আইডি হ্যাকের নাটক নয়।</p>
+            </div>
+            <button class="btn-restart" onclick="resetGame()">পালানোর শেষ চেষ্টা</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const overlay = document.getElementById('overlay');
+        const beatBox = document.getElementById('beat-box');
+
+        let gameActive = false;
+        let isBeating = false;
+        let score = 0;
+        let speed = 7;
+        let frame = 0;
+        let obstacles = [];
+        let bgTextX = 0;
+
+        const player = {
+            x: 180, y: 0, w: 60, h: 130,
+            dy: 0, grounded: false,
+            jumpForce: -19, gravity: 0.8
+        };
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            player.y = canvas.height * 0.75 - player.h;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function jump() {
+            if (player.grounded && gameActive && !isBeating) {
+                player.dy = player.jumpForce;
+                player.grounded = false;
+            }
+        }
+        window.addEventListener('keydown', (e) => { if(e.code === 'Space' || e.code === 'ArrowUp') jump(); });
+        window.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
+
+        function drawCharacter(x, y, isPlayer, f, opacity = 1) {
+            ctx.save();
+            ctx.globalAlpha = opacity;
+            const cycle = Math.sin(f * 0.18);
+            const bounce = Math.abs(Math.sin(f * 0.35)) * 6;
+
+            ctx.translate(x + 30, y + 65);
+            
+            // Legs
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#1a1a1a';
+
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 30);
+            ctx.lineTo(-cycle * 35, 65 - Math.abs(cycle)*12);
+            ctx.stroke();
+
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 30);
+            ctx.lineTo(cycle * 35, 65 - Math.abs(cycle)*12);
+            ctx.stroke();
+
+            
+            ctx.fillStyle = isPlayer ? '#e3d5b8' : '#e63946';
+            ctx.beginPath();
+            ctx.roundRect(-18, -35 - bounce, 36, 70, 12);
+            ctx.fill();
+
+            if (isPlayer) {
+                
+                ctx.fillStyle = '#4a2c1d';
+                ctx.fillRect(-20, -30 - bounce, 40, 40);
+                
+                ctx.fillStyle = '#fce2c4';
+                ctx.beginPath(); ctx.arc(0, -55 - bounce, 22, 0, Math.PI * 2); ctx.fill();
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath(); ctx.moveTo(-15, -50 - bounce); ctx.lineTo(15, -50 - bounce); ctx.lineTo(0, -20 - bounce); ctx.fill();
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(-15, -80 - bounce, 30, 12);
+            } else {
+                
+                ctx.fillStyle = '#fce2c4';
+                ctx.beginPath(); ctx.arc(0, -52 - bounce, 18, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#000'; // Hair
+                ctx.beginPath(); ctx.arc(0, -58 - bounce, 21, Math.PI, 0); ctx.fill();
+            }
+
+            
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.moveTo(0, -25 - bounce);
+            ctx.lineTo(cycle * 30, 15 - bounce);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function createPunchFX(x, y) {
+            const el = document.createElement('div');
+            el.className = 'punch-fx';
+            el.innerText = ['👊', '🥊', '💥', '💢'][Math.floor(Math.random()*4)];
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 400);
+        }
+
+        function update() {
+            if (!gameActive) return;
+            frame++;
+            
+            
+            speed += 0.0015;
+
+            
+            player.y += player.dy;
+            player.dy += player.gravity;
+
+            const groundPos = canvas.height * 0.75 - player.h;
+            if (player.y > groundPos) {
+                player.y = groundPos;
+                player.dy = 0;
+                player.grounded = true;
+            }
+
+            
+            if (frame % Math.max(40, Math.floor(80 - speed)) === 0) {
+                obstacles.push({ x: canvas.width, y: canvas.height * 0.75 - 50, w: 50, h: 50 });
+            }
+
+            obstacles.forEach((ob, i) => {
+                ob.x -= speed;
+                
+                if (player.x < ob.x + ob.w - 10 && player.x + player.w - 10 > ob.x && player.y + player.h > ob.y) {
+                    triggerKelani();
+                }
+                if (ob.x < -100) {
+                    obstacles.splice(i, 1);
+                    score++;
+                    scoreEl.innerText = score;
+                }
+            });
+
+            
+            bgTextX -= (speed * 0.4);
+            if (bgTextX < -2000) bgTextX = canvas.width;
+
+            render();
+            requestAnimationFrame(update);
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            
+            const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            sky.addColorStop(0, '#000428');
+            sky.addColorStop(1, '#004e92');
+            ctx.fillStyle = sky;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            
+            ctx.save();
+            ctx.globalAlpha = 0.15;
+            ctx.fillStyle = '#fff';
+            ctx.font = '900 150px "Hind Siliguri"';
+            ctx.fillText('Diddy শফিকুর পালাচ্ছে... Diddy শফিকুর পালাচ্ছে...', bgTextX, canvas.height * 0.45);
+            ctx.restore();
+
+            
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, canvas.height * 0.75, canvas.width, canvas.height * 0.25);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, canvas.height * 0.75, canvas.width, 3);
+
+            
+            obstacles.forEach(ob => {
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#ff0000';
+                ctx.fillStyle = '#ff4d4d';
+                ctx.beginPath();
+                ctx.roundRect(ob.x, ob.y, ob.w, ob.h, 10);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+
+            
+            for(let i=0; i<5; i++) {
+                drawCharacter(player.x - 130 - (i*70), canvas.height * 0.75 - player.h, false, frame + (i*15));
+            }
+
+            
+            drawCharacter(player.x, player.y, true, frame);
+        }
+
+        function triggerKelani() {
+            gameActive = false;
+            isBeating = true;
+            
+            let hits = 0;
+            const beatInterval = setInterval(() => {
+                const rx = player.x + (Math.random() * 120 - 60);
+                const ry = player.y + (Math.random() * 120 - 60);
+                createPunchFX(rx, ry);
+                
+                
+                render();
+                for(let i=0; i<10; i++) {
+                    const ang = (i/10) * Math.PI * 2;
+                    drawCharacter(player.x + Math.cos(ang)*70, player.y + Math.sin(ang)*30, false, frame + hits);
+                }
+
+                hits++;
+                if (hits > 20) {
+                    clearInterval(beatInterval);
+                    overlay.style.display = 'flex';
+                }
+            }, 80);
+        }
+
+        function resetGame() {
+            score = 0;
+            speed = 7;
+            frame = 0;
+            obstacles = [];
+            scoreEl.innerText = '0';
+            overlay.style.display = 'none';
+            gameActive = true;
+            isBeating = false;
+            bgTextX = canvas.width;
+            update();
+        }
+
+        // Init
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 30px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('শুরু করতে ট্যাপ করুন', canvas.width/2, canvas.height/2);
+        
+        canvas.addEventListener('click', () => {
+            if(!gameActive && !isBeating) resetGame();
+        }, { once: true });
+        
+    </script>
+</body>
+</html>
